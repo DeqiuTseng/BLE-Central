@@ -155,13 +155,11 @@ BluetoothClient mClient = new BluetoothClient(context);
 
 
 
-2.支持经典蓝牙和BLE设备混合扫描，可自定义扫描策略。每次扫描都要创建新的SearchRequest，不能复用。如果
+2.每次扫描都要创建新的SearchRequest，不能复用。扫描到后通过onDeviceFounded返回扫描结果，保存device方便下一步连接设备
 
 ```java
 SearchRequest request = new SearchRequest.Builder()
         .searchBluetoothLeDevice(3000, 3)   // 先扫BLE设备3次，每次3s
-        .searchBluetoothClassicDevice(5000) // 再扫经典蓝牙5s
-        .searchBluetoothLeDevice(2000)      // 再扫BLE设备2s
         .build();
 
 mClient.search(request, new SearchResponse() {
@@ -174,6 +172,20 @@ mClient.search(request, new SearchResponse() {
     public void onDeviceFounded(SearchResult device) {
         Beacon beacon = new Beacon(device.scanRecord);
         BluetoothLog.v(String.format("beacon for %s\n%s", device.getAddress(), beacon.toString()));
+
+//可以在广播中携带设备的自定义数据，用于设备识别，数据广播，事件通知等，这样手机端无需连接设备就可以获取设备推送的数据。扫描到的beacon数据为byte[]，在SearchResult的scanRecord中，按如下形式生成Beacon对象，
+//                Beacon beacon = new Beacon(device.scanRecord);
+//                BluetoothLog.v(String.format("beacon for %s\n%s", device.getAddress(), beacon.toString()));
+
+//                BeaconItem beaconItem = null;
+//                BeaconParser beaconParser = new BeaconParser(beaconItem);
+//                int firstByte = beaconParser.readByte(); // 读取第1个字节
+//                int secondByte = beaconParser.readByte(); // 读取第2个字节
+//                int productId = beaconParser.readShort(); // 读取第3,4个字节
+//                boolean bit1 = beaconParser.getBit(firstByte, 0); // 获取第1字节的第1bit
+//                boolean bit2 = beaconParser.getBit(firstByte, 1); // 获取第1字节的第2bit
+//                beaconParser.setPosition(0); // 将读取起点设置到第1字节处
+
     }
 
     @Override
@@ -196,11 +208,11 @@ mClient.stopSearch();
 
 
 
-3.扫描到设备后，对设备进行连接
+3.扫描到设备后，对设备进行连接，传入第2步扫描到的设备Mac地址进行连接。
 
 ```java
 //如果要监听蓝牙连接状态可以注册回调，只有两个状态：连接和断开。
-mClient.registerConnectStatusListener(MAC, mBleConnectStatusListener);
+mClient.registerConnectStatusListener(mDevice.getAddress(), mBleConnectStatusListener);
 
 private final BleConnectStatusListener mBleConnectStatusListener = new BleConnectStatusListener() {
 
@@ -216,7 +228,7 @@ private final BleConnectStatusListener mBleConnectStatusListener = new BleConnec
 mClient.unregisterConnectStatusListener(MAC, mBleConnectStatusListener);
 
 
-//设置连接参数
+//当然你也可以设置更多的连接参数进行连接
 BleConnectOptions options = new BleConnectOptions.Builder()
         .setConnectRetry(3)   // 连接如果失败重试3次
         .setConnectTimeout(30000)   // 连接超时30s
