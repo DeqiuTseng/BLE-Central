@@ -49,15 +49,15 @@ baby = [BabyBluetooth shareBabyBluetooth];
 [baby setBlockOnDiscoverToPeripherals:^(CBCentralManager *central, CBPeripheral *peripheral, NSDictionary *advertisementData, NSNumber *RSSI) {
         NSLog(@"Scan device :%@",peripheral.name);
 }];
-
- 
+```
 
 
 
 4.查找到设备后开始进行设备连接
+
 4. Start device connection after finding the device
 
-​```objective-c
+```objective-c
 //使用不同的channel切换委托回调,channelOnPeropheralString 为任意唯一字符串标识
 //Use different channels to switch the delegate callback, and channelOnPeropheralString is any unique string identification
 [baby setBlockOnConnectedAtChannel:channelOnPeropheralString block:^(CBCentralManager *central, CBPeripheral *peripheral) {
