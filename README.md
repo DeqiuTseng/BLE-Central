@@ -137,17 +137,34 @@ if (self.characteristic.properties & CBCharacteristicPropertyNotify || self.char
 
 
 
+（3）写入数据
 
+```objective-c
+//设置写数据成功的回调
+    [baby setBlockOnDidWriteValueForCharacteristicAtChannel:channelOnCharacteristicView block:^(CBCharacteristic *characteristic, NSError *error) {
+         NSLog(@"setBlockOnDidWriteValueForCharacteristicAtChannel characteristic:%@ and new value:%@",characteristic.UUID, characteristic.value);
+    }];
 
+//写入数据
+Byte b = 0X01;
+NSData *data = [NSData dataWithBytes:&b length:sizeof(b)];
+[self.currPeripheral writeValue:data forCharacteristic:self.characteristic type:CBCharacteristicWriteWithResponse];
+```
 
+ 
 
 ## Android SDK文档说明
 
+
+##Android SDK documentation
+
 使用SDK前导入libCCNetBluetooth.aar至工程
+Import libccnetbluetooth.aar to the project before using SDK
 
 
 
 1.创建一个BluetoothClient，建议作为一个全局单例，管理所有BLE设备的连接。
+1. Create a BluetoothClient. As a global example, it is recommended to manage the connections of all BLE devices.
 
 ```java
 BluetoothClient mClient = new BluetoothClient(context);
@@ -156,10 +173,11 @@ BluetoothClient mClient = new BluetoothClient(context);
 
 
 2.每次扫描都要创建新的SearchRequest，不能复用。扫描到后通过onDeviceFounded返回扫描结果，保存device方便下一步连接设备
+2. A new SearchRequest must be created for each scan and cannot be reused. After scanning, return the scanning result through onDeviceFounded, save the device to connect to the device in the next step
 
 ```java
 SearchRequest request = new SearchRequest.Builder()
-        .searchBluetoothLeDevice(3000, 3)   // 先扫BLE设备3次，每次3s
+        .searchBluetoothLeDevice(3000, 3)   // 先扫BLE设备3次，每次3s   Scan ble device for 3 times, 3S each time
         .build();
 
 mClient.search(request, new SearchResponse() {
@@ -173,18 +191,7 @@ mClient.search(request, new SearchResponse() {
         Beacon beacon = new Beacon(device.scanRecord);
         BluetoothLog.v(String.format("beacon for %s\n%s", device.getAddress(), beacon.toString()));
 
-//可以在广播中携带设备的自定义数据，用于设备识别，数据广播，事件通知等，这样手机端无需连接设备就可以获取设备推送的数据。扫描到的beacon数据为byte[]，在SearchResult的scanRecord中，按如下形式生成Beacon对象，
-//                Beacon beacon = new Beacon(device.scanRecord);
-//                BluetoothLog.v(String.format("beacon for %s\n%s", device.getAddress(), beacon.toString()));
 
-//                BeaconItem beaconItem = null;
-//                BeaconParser beaconParser = new BeaconParser(beaconItem);
-//                int firstByte = beaconParser.readByte(); // 读取第1个字节
-//                int secondByte = beaconParser.readByte(); // 读取第2个字节
-//                int productId = beaconParser.readShort(); // 读取第3,4个字节
-//                boolean bit1 = beaconParser.getBit(firstByte, 0); // 获取第1字节的第1bit
-//                boolean bit2 = beaconParser.getBit(firstByte, 1); // 获取第1字节的第2bit
-//                beaconParser.setPosition(0); // 将读取起点设置到第1字节处
 
     }
 
@@ -200,7 +207,8 @@ mClient.search(request, new SearchResponse() {
 });
 ```
 
-如果需要手动停止扫描调用
+如果需要手动停止扫描调用  
+If you need to stop the scan call manually
 
 ```java
 mClient.stopSearch();
@@ -209,9 +217,11 @@ mClient.stopSearch();
 
 
 3.扫描到设备后，对设备进行连接，传入第2步扫描到的设备Mac地址进行连接。
+3. After scanning to the device, connect the device, and pass in the MAC address of the device scanned in step 2 to connect.
 
 ```java
 //如果要监听蓝牙连接状态可以注册回调，只有两个状态：连接和断开。
+//If you want to monitor the Bluetooth connection status, you can register a callback. There are only two statuses: connected and disconnected.
 mClient.registerConnectStatusListener(mDevice.getAddress(), mBleConnectStatusListener);
 
 private final BleConnectStatusListener mBleConnectStatusListener = new BleConnectStatusListener() {
@@ -229,13 +239,14 @@ mClient.unregisterConnectStatusListener(MAC, mBleConnectStatusListener);
 
 
 //当然你也可以设置更多的连接参数进行连接
+//Of course, you can also set more connection parameters to connect
 BleConnectOptions options = new BleConnectOptions.Builder()
-        .setConnectRetry(3)   // 连接如果失败重试3次
-        .setConnectTimeout(30000)   // 连接超时30s
-        .setServiceDiscoverRetry(3)  // 发现服务如果失败重试3次
-        .setServiceDiscoverTimeout(20000)  // 发现服务超时20s
+        .setConnectRetry(3)   // 连接如果失败重试3次  //Retry 3 times if connection fails
+        .setConnectTimeout(30000)   // 连接超时30s   //Connection timeout 30s
+        .setServiceDiscoverRetry(3)  // 发现服务如果失败重试3次  //Discovery service retries 3 times if it fails
+        .setServiceDiscoverTimeout(20000)  // 发现服务超时20s  //Discovery service timeout 20s
         .build();
-//开始进行连接
+//开始进行连接  //Start connection
 mClient.connect(MAC, options, new BleConnectResponse() {
     @Override
     public void onResponse(int code, BleGattProfile data) {
@@ -243,17 +254,19 @@ mClient.connect(MAC, options, new BleConnectResponse() {
     }
 });
 
-//断开连接
+//断开连接  //Disconnect
 mClient.disconnect(MAC);
 ```
 
 
 
 4.连接成功后从BleGattProfile data 读取serviceUUID、characterUUID，就可以开始读数据了
+4. After the connection is successful, read serviceUUID、characterUUID from BleGattProfile data, and then start reading data
 
 
 
 （1）读取数据
+(1) Read data
 
 ```
 mClient.read(MAC, serviceUUID, characterUUID, new BleReadResponse() {
@@ -267,9 +280,10 @@ mClient.read(MAC, serviceUUID, characterUUID, new BleReadResponse() {
 ```
 
 （2）订阅通知
+(2) Subscribe to notifications
 
 ```java
-//订阅通知
+//订阅通知  //Subscribe to notifications
 mClient.notify(MAC, serviceUUID, characterUUID, new BleNotifyResponse() {
     @Override
     public void onNotify(UUID service, UUID character, byte[] value) {
@@ -285,8 +299,25 @@ mClient.notify(MAC, serviceUUID, characterUUID, new BleNotifyResponse() {
 });
 
 
-//关闭通知
+//关闭通知   //Close notification
 mClient.unnotify(MAC, serviceUUID, characterUUID, new BleUnnotifyResponse() {
+    @Override
+    public void onResponse(int code) {
+        if (code == REQUEST_SUCCESS) {
+
+        }
+    }
+});
+```
+
+
+
+（3）写入数据
+
+要注意这里写的byte[]不能超过20字节，如果超过了需要自己分成几次写。建议的办法是第一个byte放剩余要写的字节的长度。
+
+```java 
+mClient.write(MAC, serviceUUID, characterUUID, bytes, new BleWriteResponse() {
     @Override
     public void onResponse(int code) {
         if (code == REQUEST_SUCCESS) {
